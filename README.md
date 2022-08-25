@@ -3,14 +3,17 @@
 
 #Generate ssh key and upload to server /root/.ssh/id_rsa :
 >ssh-keygen 
-then
+
+#then
+
 >copy ansible files to /etc/ansible
 
 #Edit ssh config /etc/ssh/sshd_config
 >port 1234
+
 >PermitRootLogin prohibid-password
-then
->restart service ssh
+
+#restart service ssh
 
 #Edit ip addr 
 >/etc/ansible/hosts
