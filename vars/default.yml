@@ -1,0 +1,14 @@
+#System Settings
+php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip', 'php8.1-fpm' ]
+lemp: [ 'nginx', 'mysql-server', 'python3-pymysql', 'php', 'php-mysql', 'libapache2-mod-php']
+item: "apt"
+#MySQL Settings
+mysql_root_password: "gfhjkm123"
+mysql_db: "wordpress"
+mysql_user: "user"
+mysql_password: "password"
+
+#HTTP Settings
+http_host: "test.example.com"
+http_conf: "test.example.com.conf"
+http_port: "80"

@@ -1,0 +1,171 @@
+---
+- hosts: webservers
+  become: true
+  vars_files:
+    - vars/default.yml
+
+  tasks:
+    - name: Add repository
+      become: true
+      apt_repository:
+        repo: 'ppa:ondrej/php'
+    
+    - name: Install prerequisites
+      apt: name=apt update_cache=yes state=latest force_apt_get=yes
+      tags: [ system ]
+    
+    - name: Install LEMP Packages
+      apt: name={{ item }} update_cache=yes state=latest
+      loop : "{{ lemp }}"
+      tags: [ system ]
+
+    - name: Install PHP Extensions
+      apt: name={{ item }} update_cache=yes state=latest
+      loop: "{{ php_modules }}"
+      tags: [ system ]
+
+  # Nginx Configuration
+    - name: "create www directory"
+      file:
+        path: /var/www/{{ http_host }}
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      tags: [ Nginx ]
+
+    - name: "delete default nginx site"
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: restart nginx
+      tags: [ Nginx ]
+
+    - name: "copy nginx {{ http_host }}.conf"
+      template:
+        src: nginx.conf.j2
+        dest: "/etc/nginx/sites-enabled/{{ http_host }}.conf"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+#      notify: restart nginx
+      tags: [Nginx]
+
+    # MySQL Configuration
+#    - name: Set the root password
+#      mysql_user:
+#        name: root
+#        password: "{{ mysql_root_password }}"
+#        login_unix_socket: /var/run/mysqld/mysqld.sock
+#      tags: [ mysql, mysql-root ]
+
+    - name: Remove all anonymous user accounts
+      mysql_user:
+        name: ''
+        host_all: yes
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      tags: [ mysql ]
+
+    - name: Remove the MySQL test database
+      mysql_db:
+        name: test
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      tags: [ mysql ]
+
+    - name: Creates database for WordPress
+      mysql_db:
+        name: "{{ mysql_db }}"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      tags: [ mysql ]
+
+    - name: Create MySQL user for WordPress
+      mysql_user:
+        name: "{{ mysql_user }}"
+        password: "{{ mysql_password }}"
+        priv: "{{ mysql_db }}.*:ALL"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      tags: [ mysql ]
+
+  # WordPress Configuration
+
+    - name: Download and unpack latest WordPress
+      unarchive:
+        src: https://wordpress.org/latest.tar.gz
+        dest: "/var/www/{{ http_host }}"
+        remote_src: yes
+        creates: "/var/www/{{ http_host }}/wordpress"
+      tags: [ wordpress ]
+
+    - name: Set ownership
+      file:
+        path: "/var/www/{{ http_host }}"
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+      tags: [ wordpress ]
+
+    - name: Set permissions for directories
+      shell: "/usr/bin/find /var/www/{{ http_host }}/wordpress/ -type d -exec chmod 750 {} \\;"
+      tags: [ wordpress ]
+
+    - name: Set permissions for files
+      shell: "/usr/bin/find /var/www/{{ http_host }}/wordpress/ -type f -exec chmod 640 {} \\;"
+      tags: [ wordpress ]
+
+    - name: Set up wp-config
+      template:
+        src: wp-config.php.j2
+        dest: "/var/www/{{ http_host }}/wordpress/wp-config.php"
+      tags: [ wordpress ]
+
+  handlers:
+    - name: Reload nginx
+      service:
+        name: nginx
+        state: reloaded
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+#Install and configure SCF
+    - name: Download Package
+      get_url:
+        url: https://download.configserver.com/csf.tgz
+        dest: /usr/src/csf.tgz
+      register: output
+
+    - name: 'Extracting package'
+      when: output.changed == true
+      unarchive:
+        src: /usr/src/csf.tgz
+        dest: /usr/src/
+        remote_src: yes
+
+    - name: 'Executing install script'
+      when: output.changed == true
+      shell:
+        cmd: sh install.sh
+        chdir: /usr/src/csf/
+
+    - name: 'Copy config file'
+      copy:.
+        src: csf.conf
+        dest: /etc/csf/csf.conf
+
+    - name: "Restarting CSF"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      with_items:
+           - csf

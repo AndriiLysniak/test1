@@ -1,0 +1,13 @@
+server {
+  listen {{ http_port }};
+  listen [::]:80;
+  server_name {{ http_host }};
+  root /var/www/{{ http_host }}/;
+  location / {
+    try_files $uri $uri/ =404;
+  }
+
+# logging
+access_log /var/log/nginx/{{ http_host }}.access.log;
+error_log  /var/log/nginx/{{ http_host }}.error.log;
+
