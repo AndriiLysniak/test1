@@ -51,13 +51,13 @@
 #      notify: restart nginx
       tags: [Nginx]
 
-    # MySQL Configuration
-#    - name: Set the root password
-#      mysql_user:
-#        name: root
-#        password: "{{ mysql_root_password }}"
-#        login_unix_socket: /var/run/mysqld/mysqld.sock
-#      tags: [ mysql, mysql-root ]
+    #MySQL Configuration
+    - name: Set the root password
+      mysql_user:
+        name: root
+        password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      tags: [ mysql, mysql-root ]
 
     - name: Remove all anonymous user accounts
       mysql_user:
